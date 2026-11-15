@@ -28,7 +28,7 @@
 
 ## APK 파일 위치
 
-**[`apk/전현우_ChargeNap_release.apk`](apk/전현우_ChargeNap_release.apk)** — 서명된 release 빌드(약 42MB). 같은 파일이 [Releases v1.1.0](https://github.com/jhyunwoo/chargenap/releases/tag/v1.1.0)에도 있습니다.
+**[`apk/전현우_ChargeNap_release.apk`](apk/전현우_ChargeNap_release.apk)** — 서명된 release 빌드(약 42MB). 2026-11-16에 에뮬레이터 검증에서 찾은 결함 D1~D3 수정을 넣어 다시 빌드했습니다. [Releases v1.1.0](https://github.com/jhyunwoo/chargenap/releases/tag/v1.1.0)의 APK는 수정 전 빌드(1차 접수 시점)입니다.
 
 ## 실행 방법
 
@@ -72,7 +72,7 @@ Virtual Console은 브라우저 세션(1초 주기 하트비트)이 있어야 �
 scripts/bootstrap-toolchain.sh     # JDK 17·Android SDK를 홈 디렉터리에 설치 (이미 있으면 생략)
 source scripts/env.sh
 ./gradlew assembleDebug            # 디버그 APK
-./gradlew testDebugUnitTest        # 단위 테스트 418개
+./gradlew testDebugUnitTest        # 단위 테스트 459개(평소 440개 실행)
 scripts/package-release.sh         # 서명된 release APK → apk/전현우_ChargeNap_release.apk
 ```
 
@@ -100,10 +100,10 @@ release 빌드에는 저장소 루트의 `keystore.properties`(커밋하지 않�
 | 기능 | 실제 차량 (Pleos Connect SDK) | 데모 모드 (가상 차량) |
 | --- | --- | --- |
 | 배터리 잔량 | Vehicle SDK `EvBattery.getEvBatteryStateOfCharge` + 구독 | 1%/분으로 증가(30배속) |
-| 충전 중 판정 | SDK에 충전 상태 API가 없어 **충전 스위치·잔량·충전 포트로 판단**. AAOS `EV_CHARGE_STATE`·`EV_CHARGE_PORT_CONNECTED`를 읽을 수 있으면 우선 | 시작 3초 뒤 충전 시작 |
-| 남은 충전 시간 | SDK에 없음 → **잔량 변화 속도(지수이동평균)로 추정**. AAOS `EV_CHARGE_TIME_REMAINING`이 있으면 우선 | 같은 추정기 |
+| 충전 중 판정 | SDK에 충전 상태 API가 없어 **충전 스위치·잔량·충전 포트로 판단**. AAOS `EV_CHARGE_STATE`·`EV_CHARGE_PORT_CONNECTED`는 앱이 연결된 뒤 값이 바뀌는 것을 봤을 때 우선(갱신되지 않는 기본값은 믿지 않음. 충전 스위치를 주지 않는 차량은 충전 상태를 처음부터 사용) | 시작 3초 뒤 충전 시작 |
+| 남은 충전 시간 | SDK에 없음 → **잔량 변화 속도(지수이동평균)로 추정**. AAOS `EV_CHARGE_TIME_REMAINING`은 값이 바뀌는 것을 봤을 때만 우선 | 같은 추정기 |
 | 기어 P | Vehicle SDK `Gear` (실패 시 AAOS `GEAR_SELECTION`) | 가상 값(DEMO 조작) |
-| 주차 브레이크 | SDK에 없음 → AAOS `PARKING_BRAKE_ON`을 읽을 수 있을 때만 확인, 아니면 기어 P만으로 판정 | 가상 값 |
+| 주차 브레이크 | SDK에 없음 → AAOS `PARKING_BRAKE_ON`이 체결이면 확인, 풀림은 값이 바뀌는 것을 봤을 때만 믿음. 확인할 수 없으면 기어 P만으로 판정 | 가상 값 |
 | 도어 열림 | Vehicle SDK `Door` 위치 구독 | 가상 값(DEMO 조작) |
 | 시트 리클라인·복구 | Vehicle SDK `Seat.moveSeatBackrestAngle` + 위치 구독으로 목표에서 정지. 방향 불일치·무응답·시간 초과 시 즉시 정지, 정지가 확인될 때까지 정지 명령 반복 | 가상 등받이 |
 | 공조 프리셋·복구 | Vehicle SDK `HVAC` 온도·풍량·전원 설정 후 다시 읽어 반영 확인 | 가상 공조 |
@@ -117,12 +117,14 @@ release 빌드에는 저장소 루트의 `keystore.properties`(커밋하지 않�
 
 | 검증 | 결과 |
 | --- | --- |
-| 단위 테스트 418개 (세션 엔진, 충전 시간 추정, 안전 가드, 차량 값 변환·시트 정지, 음성 해석·바인더, 화면 상호작용, 통합, 앱 실행) | 통과 (영상·프레임 캡처용 19개는 `-Pchargenap.video=true`일 때만 실행) |
+| 단위 테스트 459개 (세션 엔진, 충전 시간 추정, 안전 가드, 차량 값 변환·시트 정지, 음성 해석·바인더, 화면 상호작용, 통합, 앱 실행) | 440개 실행, 실패 0 (영상·프레임 캡처용 19개는 `-Pchargenap.video=true`일 때만 실행) |
 | 화면 스냅샷 31장 (2,560×1,440, 21:9, 4:3) | 잘림·겹침 없음 |
-| Pleos Connect Emulator 2.1.0에 release APK 설치·실행 | 확인 |
 | 에뮬레이터에서 데모 모드로 제안 → 안전 확인 → 수면 → 기상 → 브리핑, 도어 열림 중단·복구 | 확인(시연 영상) |
-| 에뮬레이터에서 Vehicle Service 연결 | 앱의 연결 요청과 SDK 바인딩까지 확인. 개발 PC(메모리 8GB)의 에뮬레이터에서는 Pleos 차량 HAL 서비스가 부팅 중 종료를 반복해 `car_service`가 준비되지 않아, 실제 차량 값 읽기·시트·공조 제어는 아직 실행 검증하지 못했습니다. 앱은 이 경우 사유를 표시하고 데모 모드로 동작합니다 |
-| 음성(TTS·STT) | 에뮬레이터에 온디바이스 음성 엔진이 없어(`ON_DEVICE_ENGINE_ERROR`) 실행 검증하지 못했습니다. 음성이 꺼진 상태에서 터치로 모든 흐름이 동작함을 확인했습니다 |
+| Pleos Connect Emulator 2.1.0(KVM 서버)에서 Vehicle Service 연결 | 확인. DEMO 배지 없이 실제 잔량을 표시하고 잔량 구독으로 실시간 갱신합니다 |
+| 에뮬레이터 + Virtual Console로 실제 차량 경로 | 충전 감지 → 남은 시간 추정 → 제안, 안전 확인 → 수면, 도어 열림·기어 D·충전 중단 시 즉시 중단·복구, 충전 완료 전·타이머 기상과 브리핑, 공조 프리셋·복구 확인(`docs/screenshots/emulator/`). 이 검증에서 찾은 결함 D1~D3(에뮬레이터가 갱신하지 않는 AAOS 값을 믿어 충전 상태가 고정되고 세션을 시작할 수 없음)은 고친 뒤 debug 빌드로 다시 확인했습니다 |
+| 시트 리클라인·복구 | 에뮬레이터가 등받이 위치를 차량 HAL에 내보내지 않아(0 고정) 끝까지 확인하지 못했습니다. 정지·복구 로직은 단위 테스트로 확인했습니다 |
+| 음성(TTS·STT) | 온디바이스 TTS가 앱 문장을 읽고 STT 인식 루프가 도는 것까지 확인했습니다. 창 없는 에뮬레이터에 마이크 입력을 넣지 못해 음성 명령 인식은 아직 확인하지 못했습니다. 터치로 모든 흐름이 동작합니다 |
+| `apk/`의 release APK | 수정 반영 빌드, 서명 확인(`apksigner verify`). 이 release 빌드 자체는 아직 에뮬레이터에 설치해 보지 않았습니다(수정 전 release 빌드는 설치·실행 확인) |
 
 자세한 기록은 [docs/progress.md](docs/progress.md), SDK 사실 확인 기록은 [docs/sdk-notes.md](docs/sdk-notes.md)에 있습니다.
 
