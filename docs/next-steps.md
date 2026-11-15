@@ -1,6 +1,6 @@
 # 앞으로 할 일
 
-2026-11-13 기준. 2차 PT 심사(2026-12-03 ~ 12-04)까지 "실제 동작하는 앱"을 보여 주는 것이 목표다. 기능 구현은 6~8단계까지 끝났고(`docs/progress.md`), 남은 것은 대부분 **실제 Pleos 환경에서의 실행 검증**과 발표 준비다. 개발은 Vultr 서버에서 이어 간다(`docs/server-setup.md`).
+2026-11-15 갱신. 2차 PT 심사(2026-12-03 ~ 12-04)까지 "실제 동작하는 앱"을 보여 주는 것이 목표다. 기능 구현은 6~8단계까지 끝났다. 2026-11-15에 KVM 서버(Vultr Bare Metal)에서 에뮬레이터 실행 검증을 했고, 결과와 결함 D1~D3은 `docs/progress.md` "KVM 서버 에뮬레이터 실행 검증"에 있다. 개발은 Vultr 서버에서 이어 간다(`docs/server-setup.md`).
 
 서브에이전트에게 맡길 때는 아래 항목의 과제와 완료 기준을 프롬프트에 그대로 넣는다. 항목이 끝날 때마다 qa-verifier로 확인하고 커밋하며, `docs/progress.md`를 갱신한다.
 
@@ -8,13 +8,15 @@
 
 | 언제까지 | 할 일 | 참고 |
 | --- | --- | --- |
-| **11/15(일) 23:59** | 1차 접수 메일 발송. 접수양식 01장(대표자·구성원)·04장(전원 동의·서명) 채우기, 영상 첨부, 팀원 전원 CC | `submission/README.md`, `submission/email.md`. 메일의 최종 커밋은 `335853a`. 이후 커밋을 push해도 심사 기준은 메일에 적은 해시다 |
+| **11/15(일) 23:59** | 1차 접수 메일 발송(개인 참가, CC 없음). 접수양식 01장(참가 부문·연락처·작성일)·04장(동의·서명) 채우기, 영상 첨부 | `submission/README.md`, `submission/email.md`. 메일의 최종 커밋은 `b3cb644`. 이후 커밋을 push해도 심사 기준은 메일에 적은 해시다 |
 | 11/23 | 저장소 공개 유지 (1차 결과 발표일) | 공모전 규정 |
 | 서버 이전 시 | Vultr 서버 생성(KVM 확인), Claude Code·`gh` 로그인, 번들 전송 | `docs/server-setup.md` |
 | 음성 시험 전 | (필요하면) Pleos Playground My Project에서 앱 등록 → Client ID/Secret 발급 | 서버 모드 음성에 필요. 비밀값이라 커밋 금지 |
 | 12/2까지 | 발표 자료(PT)와 발표자 정하기 | 시연 순서는 `docs/demo-script.md` |
 
-## 1. 서버 환경 검증 — 서버 첫 세션
+## 1. 서버 환경 검증 — 서버 첫 세션 (2026-11-15 완료)
+
+결과: 단위 테스트 418개 통과, 에뮬레이터 부팅·`car_service` 정상, release APK로 DEMO 배지 없이 실제 잔량 표시. 서명 확인은 커밋된 APK에 `apksigner verify`로 했고, 서버에서 새로 빌드한 release가 커밋된 APK와 코드·리소스가 같다. 서명 키는 서버에 옮기지 않았다. Optimized Cloud(VOC)에는 KVM이 없어 Bare Metal을 쓴다.
 
 과제: 이전한 환경에서 빌드·테스트·서명·에뮬레이터 부팅을 확인한다. 서버 환경에 대해 알게 된 사실(KVM, 사양, 막힌 점)을 Claude 메모리에 새로 적고, 예전 PC 전용 메모리(`chargenap-dev-environment`)는 "예전 PC" 기록으로 고친다.
 
@@ -27,6 +29,8 @@
 막히면: `car_service`가 여전히 준비되지 않으면 AVD RAM 8192(`scripts/install-pleos-emulator.sh 8192`), CPU 코어 수, GPU 모드(`-gpu swiftshader_indirect` / `-gpu guest`)를 바꿔 cold boot를 다시 해 보고, 차량 HAL 서비스 패닉 로그를 `docs/progress.md`에 남긴다. 그래도 안 되면 Pleos Playground 개발자 지원에 이미지 문제로 문의한다(pleos-sdk-researcher가 문의 내용 정리). 이 경우 2차 PT는 데모 모드 + 바인딩까지의 실제 로그로 시연하는 계획으로 바꾼다.
 
 ## 2. 차량 연동 실행 검증 (6단계 완료 기준) — qa-verifier, 고칠 것이 나오면 vehicle-integration-dev
+
+2026-11-15 상태: 1(권한 거부 경로)·3·4·5 통과, 2는 공조만 확인(에뮬레이터가 등받이 위치를 VHAL에 내보내지 않음), 6은 재현 불가, 7 완료(`docs/screenshots/emulator/real_*.png`). 결함 D1(충전 상태 고정)·D2(커넥터)·D3(주차 브레이크로 시작 불가)은 같은 날 고쳤고, 수정 debug 빌드로 권한 허용 경로의 1·3·4·5를 재확인했다(`fixed_*.png`). **남은 것: 노트북에서 수정한 release APK를 만들어(`scripts/package-release.sh`, 서명 키는 노트북에만 있음) 같은 시나리오 재확인, README "검증 상태" 갱신.**
 
 명령은 README "실제 차량 연동 확인"과 `scripts/vconsole.sh`. 긴 시나리오는 `scripts/vconsole.sh heartbeat &`.
 
@@ -41,6 +45,8 @@
 7. 각 시나리오의 화면을 `emu.sh shot`으로 남겨 `docs/screenshots/emulator/`에 추가
 
 ## 3. 음성 실행 검증 (7단계 완료 기준) — voice-dev, qa-verifier
+
+2026-11-15 상태: KVM 서버 에뮬레이터에는 온디바이스 TTS·STT 엔진이 **있다**(`ON_DEVICE_ENGINE_ERROR`는 노트북 환경 문제). 앱 요청으로 한국어 TTS 생성과 STT 인식 루프를 확인했다. 창 없는 에뮬레이터가 PulseAudio에 붙지 않아 음성 명령을 넣지 못했다. 남은 것: 마이크가 있는 환경(창 모드 에뮬레이터, 또는 서버 에뮬레이터 + scrcpy 오디오)에서 명령 인식 확인. 서버 모드(`registerApp`)는 필요 없다.
 
 지금 앱은 TTS·STT를 `ON_DEVICE` 모드로만 만든다. 에뮬레이터 이미지에 온디바이스 엔진이 없으면(`ON_DEVICE_ENGINE_ERROR`) 음성이 꺼지고 터치로 동작한다.
 
