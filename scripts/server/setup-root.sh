@@ -6,7 +6,7 @@
 #   - KVM 권한(에뮬레이터 가속), 스왑, 방화벽(SSH만 허용), SSH 비밀번호 로그인 끄기(공개키가 있을 때만)
 #
 # 사용 (서버에서, root):
-#   curl -fsSL https://raw.githubusercontent.com/moveto-team/chargenap/main/scripts/server/setup-root.sh -o setup-root.sh
+#   curl -fsSL https://raw.githubusercontent.com/jhyunwoo/chargenap/main/scripts/server/setup-root.sh -o setup-root.sh
 #   bash setup-root.sh [계정명]
 # 환경 변수:
 #   DEV_SUDO_NOPASSWD=0   sudo에 비밀번호를 요구한다(기본 1: 비밀번호 없이 sudo. Claude Code가 패키지 설치를 할 수 있게)
@@ -106,6 +106,6 @@ cat <<EOF
   KVM: $KVM_STATUS
 다음 (로컬 PC에서):
   ssh $DEV_USER@<서버IP>
-  git clone https://github.com/moveto-team/chargenap.git ~/workspace/chargenap
+  git clone https://github.com/jhyunwoo/chargenap.git ~/workspace/chargenap
   cd ~/workspace/chargenap && scripts/server/setup-dev.sh
 EOF

@@ -62,7 +62,7 @@ scripts/server/export-bundle.sh              # → ~/chargenap-bundle.tar.gz (�
 
 ```bash
 ssh root@<서버IP>
-curl -fsSL https://raw.githubusercontent.com/moveto-team/chargenap/main/scripts/server/setup-root.sh -o setup-root.sh
+curl -fsSL https://raw.githubusercontent.com/jhyunwoo/chargenap/main/scripts/server/setup-root.sh -o setup-root.sh
 bash setup-root.sh dev
 ```
 
@@ -81,7 +81,7 @@ scp ~/chargenap-bundle.tar.gz dev@<서버IP>:~/
 ```bash
 ssh -o ServerAliveInterval=30 dev@<서버IP>
 tmux new -s setup                  # 끊기면 다시 접속해서 tmux attach -t setup
-git clone https://github.com/moveto-team/chargenap.git ~/workspace/chargenap
+git clone https://github.com/jhyunwoo/chargenap.git ~/workspace/chargenap
 cd ~/workspace/chargenap
 scripts/server/setup-dev.sh --with-emulator        # 툴체인, Gradle 설정, Node, Claude Code, 에뮬레이터(약 20GB)
 source ~/.bashrc

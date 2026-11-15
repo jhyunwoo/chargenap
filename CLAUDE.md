@@ -61,7 +61,7 @@ apk/                제출용 release APK
 - 셸마다 `source scripts/env.sh`(JDK 17, Android SDK 경로). 서버 사양용 Gradle 설정은 `~/.gradle/gradle.properties`에 있고 저장소 `gradle.properties`보다 우선한다.
 - 에뮬레이터는 cold boot만 쓴다(quick boot면 VHAL을 쓸 수 없다). 화면 확인은 `emu.sh shot`으로 PNG를 찍어 읽는다.
 - 단위 테스트는 `docs/screenshots/` PNG를 다시 쓴다. 화면을 바꾸지 않았는데 PNG만 바뀌었으면 커밋하지 않는다.
-- 커밋 작성자는 저장소 설정 `Moveto <moveto-team@users.noreply.github.com>`(개인 계정이 공모전 링크에 드러나지 않게).
+- 커밋 작성자는 저장소 설정 `전현우 <88994338+jhyunwoo@users.noreply.github.com>`(개인 참가. GitHub noreply 주소라 실제 메일은 드러나지 않는다).
 
 ## 작업 방식
 

@@ -4,7 +4,7 @@
 #   - JDK 17, Gradle 8.11.1, Android SDK (scripts/bootstrap-toolchain.sh, 홈 디렉터리 설치)
 #   - local.properties, 서버 사양에 맞춘 ~/.gradle/gradle.properties (저장소의 5GB 기준 설정을 덮어씀)
 #   - 셸 시작 시 scripts/env.sh 적용, Node.js LTS(nvm: 영상 렌더·MCP 서버용), Claude Code
-#   - 저장소 커밋 작성자(Moveto)
+#   - 저장소 커밋 작성자(전현우, GitHub noreply 주소)
 #
 # 사용: scripts/server/setup-dev.sh [--with-emulator] [--with-ccam]
 #   --with-emulator  Pleos Connect Emulator 이미지(내려받기 약 4GB, 풀면 약 20GB)와 AVD를 설치한다. /dev/kvm이 있어야 쓸모가 있다
@@ -87,9 +87,9 @@ if [ "$WITH_CCAM" = "1" ] && ! command -v ccam >/dev/null; then
   curl -fsSL https://ccam.dev/install.sh | sh
 fi
 
-log "저장소 커밋 작성자 (개인 계정 정보가 공모전 링크에 드러나지 않게)"
-git config user.name "Moveto"
-git config user.email "moveto-team@users.noreply.github.com"
+log "저장소 커밋 작성자 (실제 메일 대신 GitHub noreply 주소)"
+git config user.name "전현우"
+git config user.email "88994338+jhyunwoo@users.noreply.github.com"
 
 if [ "$WITH_EMULATOR" = "1" ]; then
   if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then

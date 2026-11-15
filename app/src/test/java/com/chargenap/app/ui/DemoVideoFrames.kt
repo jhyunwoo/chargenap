@@ -320,7 +320,7 @@ class DemoVideoFrames {
 
         // S11 마무리
         scene("10")
-        showCard("차지냅 ChargeNap", "차가 충전되는 동안, 나도 충전", "전현우 · github.com/moveto-team/chargenap")
+        showCard("차지냅 ChargeNap", "차가 충전되는 동안, 나도 충전", "전현우 · github.com/jhyunwoo/chargenap")
         snap(7.5)
 
         // concat 형식은 마지막 파일을 한 번 더 적어야 마지막 duration이 반영된다.

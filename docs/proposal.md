@@ -11,7 +11,7 @@
 | 해당 분야 | 모빌리티 & 라이프 편의, 스마트 드라이빙 & 안전(졸음운전 예방) |
 | 대상 플랫폼 | Pleos Connect (Android Automotive OS 14 기반) |
 | 사용 SDK | Pleos Connect Vehicle SDK 2.3.2, SpeechToText SDK 3.3.1, TextToSpeech SDK 3.3.1 |
-| 개발 결과물 | 동작하는 앱(release APK), 소스 코드, 시연 영상 — https://github.com/moveto-team/chargenap |
+| 개발 결과물 | 동작하는 앱(release APK), 소스 코드, 시연 영상 — https://github.com/jhyunwoo/chargenap |
 
 ---
 
@@ -230,9 +230,9 @@ MAU = Pleos Connect 탑재 전기차 수 × 월 1회 이상 급속 충전하는 
 
 | 자료 | 위치 |
 | --- | --- |
-| GitHub 저장소(소스 코드, README) | https://github.com/moveto-team/chargenap |
+| GitHub 저장소(소스 코드, README) | https://github.com/jhyunwoo/chargenap |
 | release APK | 저장소 `apk/전현우_ChargeNap_release.apk` |
-| 시연 영상 | https://github.com/moveto-team/chargenap/releases (v1.1.0 첨부) |
+| 시연 영상 | https://github.com/jhyunwoo/chargenap/releases (v1.1.0 첨부) |
 | 앱 화면 | 저장소 `docs/screenshots/` |
 | SDK 검증 기록 | 저장소 `docs/sdk-notes.md` |
 | 검증·진행 기록 | 저장소 `docs/progress.md` |
