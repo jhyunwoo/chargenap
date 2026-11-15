@@ -109,7 +109,7 @@ scripts/server/install-claude-plugins.sh
 
 ```bash
 ./gradlew testDebugUnitTest                 # 418개 통과
-scripts/package-release.sh Moveto           # 서명 확인(apksigner)까지
+scripts/package-release.sh                  # 서명 확인(apksigner)까지
 scripts/server/emu.sh up                    # 창 없이 cold boot, 부팅까지 대기
 scripts/server/emu.sh status                # 'car_service not ready' 수가 늘지 않는지
 scripts/server/emu.sh install

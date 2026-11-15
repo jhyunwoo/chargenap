@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # release APK를 빌드해 공모전 규정 이름으로 apk/에 복사한다.
 #   apk/<팀명>_ChargeNap_release.apk
-# 사용: scripts/package-release.sh [팀명]     (생략하면 gradle.properties의 chargenap.teamName)
+# 사용: scripts/package-release.sh [팀명|성명]     (생략하면 gradle.properties의 chargenap.teamName)
 # 필요: 저장소 루트의 keystore.properties (커밋 금지). 없으면 아래 안내를 출력하고 멈춘다.
 set -euo pipefail
 cd "$(dirname "$0")/.."

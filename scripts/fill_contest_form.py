@@ -3,11 +3,13 @@
 
 - 02 "앱 프로젝트 소개 / 심사 자료"의 1~8번 답변란에 proposal.md의 "## 1." ~ "## 8." 절을 넣는다.
   (마크다운의 문단, **굵게**, 글머리표, 번호 목록, ### 소제목, 표를 Word 문단·표로 바꾼다.)
-- 01 참가신청서와 04 서명란에는 팀명·앱명 등 팀이 정한 값만 넣는다.
+- 01 참가신청서와 04 서명란에는 참가 단위·팀명(개인 참가는 성명)·앱명만 넣는다.
+  개인 참가(기본): 참가 단위 '개인', 01 '팀명(개인 참가 시 성명)'에 성명, 04 '팀명(팀 참가 시)'는 비운다.
+  팀 참가(--team): 참가 단위 '팀', 두 칸 모두 팀명.
   성명·연락처·소속·서명·참가 부문처럼 사람이 직접 적어야 하는 칸은 비워 둔다.
 
 사용:
-  python3 scripts/fill_contest_form.py <원본 양식.docx> <출력.docx> [--proposal docs/proposal.md] [--team Moveto]
+  python3 scripts/fill_contest_form.py <원본 양식.docx> <출력.docx> [--proposal docs/proposal.md] [--name 전현우 | --team 팀명]
 원본 양식: https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx
 표준 라이브러리만 쓴다.
 """
@@ -181,7 +183,7 @@ def labeled_line(p_xml: str, label: str, value: str) -> str:
     )
 
 
-def fill(document_xml: str, sections: dict[int, str], team: str) -> str:
+def fill(document_xml: str, sections: dict[int, str], name: str, team: str | None) -> str:
     body_start = document_xml.index("<w:body>") + len("<w:body>")
     body = document_xml[body_start:]
     elements = top_level_elements(body)
@@ -198,10 +200,10 @@ def fill(document_xml: str, sections: dict[int, str], team: str) -> str:
             elif text.startswith("03"):
                 in_part2 = False
             if text.startswith("참가 단위:"):
-                replacements[idx] = xml.replace("□ 팀", "■ 팀")
+                replacements[idx] = xml.replace("□ 팀", "■ 팀") if team else xml.replace("□ 개인", "■ 개인")
             elif text.startswith("팀명(개인 참가 시 성명):"):
-                replacements[idx] = labeled_line(xml, "팀명(개인 참가 시 성명): ", team)
-            elif text.startswith("팀명(팀 참가 시):"):
+                replacements[idx] = labeled_line(xml, "팀명(개인 참가 시 성명): ", team or name)
+            elif text.startswith("팀명(팀 참가 시):") and team:
                 replacements[idx] = labeled_line(xml, "팀명(팀 참가 시): ", team)
             elif text.startswith("앱명 / 프로젝트명:"):
                 replacements[idx] = labeled_line(xml, "앱명 / 프로젝트명: ", APP_NAME)
@@ -242,7 +244,8 @@ def main() -> None:
     ap.add_argument("template", type=Path)
     ap.add_argument("output", type=Path)
     ap.add_argument("--proposal", type=Path, default=Path(__file__).resolve().parent.parent / "docs" / "proposal.md")
-    ap.add_argument("--team", default="Moveto")
+    ap.add_argument("--name", default="전현우", help="개인 참가자 성명")
+    ap.add_argument("--team", default=None, help="팀으로 참가할 때만 팀명")
     args = ap.parse_args()
 
     md = args.proposal.read_text(encoding="utf-8")
@@ -264,7 +267,7 @@ def main() -> None:
                     raise SystemExit(f"안전하지 않은 경로: {info.filename}")
             z.extractall(tmpdir)
         doc = tmpdir / "word" / "document.xml"
-        doc.write_text(fill(doc.read_text(encoding="utf-8"), sections, args.team), encoding="utf-8")
+        doc.write_text(fill(doc.read_text(encoding="utf-8"), sections, args.name, args.team), encoding="utf-8")
 
         args.output.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(args.template) as src, zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED) as dst:

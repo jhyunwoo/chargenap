@@ -1,6 +1,6 @@
 # 차지냅(ChargeNap) 서비스 기획서
 
-팀 Moveto · 2026년 11월 12일
+전현우 · 2026년 11월 12일
 
 > 이 문서는 현대자동차그룹 차량용 앱 개발 공모전 접수양식 "02 앱 프로젝트 소개 / 심사 자료"의 1~8번 항목 순서를 그대로 따릅니다. 작성·제출용 접수양식(DOCX)은 이 내용으로 채웠습니다. 양식 규정에 따라 구성원의 성명·연락처·소속은 적지 않습니다.
 
@@ -231,7 +231,7 @@ MAU = Pleos Connect 탑재 전기차 수 × 월 1회 이상 급속 충전하는 
 | 자료 | 위치 |
 | --- | --- |
 | GitHub 저장소(소스 코드, README) | https://github.com/moveto-team/chargenap |
-| release APK | 저장소 `apk/Moveto_ChargeNap_release.apk` |
+| release APK | 저장소 `apk/전현우_ChargeNap_release.apk` |
 | 시연 영상 | https://github.com/moveto-team/chargenap/releases (v1.1.0 첨부) |
 | 앱 화면 | 저장소 `docs/screenshots/` |
 | SDK 검증 기록 | 저장소 `docs/sdk-notes.md` |

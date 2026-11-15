@@ -20,7 +20,7 @@
 
 완료 기준:
 - `./gradlew testDebugUnitTest` 418개 통과, 실패 0
-- `scripts/package-release.sh Moveto` 성공, `apksigner verify` 서명 확인
+- `scripts/package-release.sh` 성공, `apksigner verify` 서명 확인
 - `scripts/server/emu.sh up` 부팅 완료, `emu.sh status`에서 `car_service not ready`가 계속 늘지 않음
 - 앱 설치·실행 후 "DEMO" 배지 없이 실제 잔량 표시 (Vehicle 서비스 연결 성공)
 
@@ -64,7 +64,7 @@
 
 과제:
 1. 2절 시나리오 전부 재검증, **20분 실제 길이 세션 1회**
-2. release APK 갱신(`scripts/package-release.sh Moveto`), README 갱신 — 어떤 기능이 실제 SDK로 확인됐는지 정확히 적는다(절대 규칙 4)
+2. release APK 갱신(`scripts/package-release.sh`), README 갱신 — 어떤 기능이 실제 SDK로 확인됐는지 정확히 적는다(절대 규칙 4)
 3. 발표용 시연 순서 `docs/demo-script.md` 갱신
 4. (선택) 실제 에뮬레이터 화면이 확보되면 시연 영상 갱신 — `~/workspace/chargenap-film`, Claude 메모리 `chargenap-demo-film` 참고
 

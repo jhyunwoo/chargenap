@@ -51,7 +51,7 @@ apk/                제출용 release APK
 - 빌드: `./gradlew assembleDebug`
 - 단위 테스트: `./gradlew testDebugUnitTest`
 - 설치: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
-- 릴리스: `./gradlew assembleRelease` (제출용 이름·서명 확인까지: `scripts/package-release.sh Moveto`)
+- 릴리스: `./gradlew assembleRelease` (제출용 이름 `apk/전현우_ChargeNap_release.apk`·서명 확인까지: `scripts/package-release.sh`)
 - 에뮬레이터(서버, 창 없음): `scripts/server/emu.sh up|status|install|shot <png>|down`
 - 차량 값 주입: `scripts/vconsole.sh gear P`, `soc 53`, `charge on` 등 (README "실제 차량 연동 확인")
 

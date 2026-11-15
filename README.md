@@ -3,7 +3,7 @@
 **차가 충전되는 동안, 나도 충전.**
 전기차 급속 충전 시간에 맞춰 운전석 시트와 공조를 자동으로 세팅하고, 충전이 끝나기 전에 깨워 주는 Pleos Connect용 차량 파워냅 앱입니다.
 
-현대자동차그룹 차량용 앱 개발 공모전 출품작 · 팀 **Moveto**
+현대자동차그룹 차량용 앱 개발 공모전 출품작 · **전현우**(개인 참가)
 
 | | |
 | --- | --- |
@@ -28,14 +28,14 @@
 
 ## APK 파일 위치
 
-**[`apk/Moveto_ChargeNap_release.apk`](apk/Moveto_ChargeNap_release.apk)** — 서명된 release 빌드(약 42MB). 같은 파일이 [Releases v1.1.0](https://github.com/moveto-team/chargenap/releases/tag/v1.1.0)에도 있습니다.
+**[`apk/전현우_ChargeNap_release.apk`](apk/전현우_ChargeNap_release.apk)** — 서명된 release 빌드(약 42MB). 같은 파일이 [Releases v1.1.0](https://github.com/moveto-team/chargenap/releases/tag/v1.1.0)에도 있습니다.
 
 ## 실행 방법
 
 ### 1) 설치·실행
 
 ```bash
-adb install -r apk/Moveto_ChargeNap_release.apk
+adb install -r apk/전현우_ChargeNap_release.apk
 adb shell am start -n com.chargenap.app/.MainActivity
 ```
 
@@ -73,7 +73,7 @@ scripts/bootstrap-toolchain.sh     # JDK 17·Android SDK를 홈 디렉터리에 
 source scripts/env.sh
 ./gradlew assembleDebug            # 디버그 APK
 ./gradlew testDebugUnitTest        # 단위 테스트 418개
-scripts/package-release.sh Moveto  # 서명된 release APK → apk/Moveto_ChargeNap_release.apk
+scripts/package-release.sh         # 서명된 release APK → apk/전현우_ChargeNap_release.apk
 ```
 
 release 빌드에는 저장소 루트의 `keystore.properties`(커밋하지 않음)가 필요합니다. 없으면 스크립트가 만드는 방법을 안내합니다.
