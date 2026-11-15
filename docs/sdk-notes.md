@@ -1151,6 +1151,7 @@ car.disconnect()
 - 에뮬레이터는 API 34이므로 `registerCallback`을 쓴다. `subscribePropertyEvents`는 android14-release의 `CarPropertyManager`에 없고 android-35 스텁에만 있다(확인됨(AOSP, android.car.jar)). 35 스텁으로 컴파일하면 `registerCallback`에 Deprecated 경고가 난다.
 - `android.car.permission.CAR_ENERGY`는 dangerous라 `ActivityCompat.requestPermissions`로 런타임 요청이 필요하다.
 - Pleos 에뮬레이터가 이 속성들을 실제로 노출하는지, 그리고 Virtual Console의 Gear Selection이 AAOS `GEAR_SELECTION`에도 반영되는지는 실행해서 확인해야 한다.
+- **확인됨(에뮬레이터 실측, 2026-11-15, Pleos Connect Emulator 2.1.0, KVM)**: `EV_CHARGE_STATE`·`EV_CHARGE_PORT_CONNECTED`·`PARKING_BRAKE_ON`은 권한이 있으면 읽히지만 Virtual Console이 발행하지 않는 고정 기본값이다(`EV_CHARGE_STATE`는 FULLY_CHARGED, 커넥터·주차 브레이크는 false. 주차 브레이크 텔테일을 켜도 그대로). Virtual Console `/vehicle/catalog`에는 이 셋과 `EV_CHARGE_TIME_REMAINING` 카드가 없다(확인됨). `EV_CHARGE_TIME_REMAINING`의 실제 값은 미확인이다. `cmd car_service inject-vhal-event`는 user 빌드라 막힌다. 그래서 앱은 이 네 값을 연결 뒤 값이 한 번이라도 바뀐 것을 본 뒤에만 권위 있는 값으로 쓴다(`vehicle/pleos/AaosLiveness.kt`).
 
 ---
 

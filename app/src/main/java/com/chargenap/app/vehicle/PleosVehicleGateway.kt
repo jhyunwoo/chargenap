@@ -23,14 +23,15 @@ import com.chargenap.app.vehicle.pleos.PleosSeatSnapshot
 import com.chargenap.app.vehicle.pleos.SdkCalls
 import com.chargenap.app.vehicle.pleos.SdkOutcome
 import com.chargenap.app.vehicle.pleos.SeatMoveResult
+import com.chargenap.app.vehicle.pleos.aaosParkingBrakeOn
 import com.chargenap.app.vehicle.pleos.anyDoorOpen
 import com.chargenap.app.vehicle.pleos.isConnectionFailure
 import com.chargenap.app.vehicle.pleos.isDoorOpen
+import com.chargenap.app.vehicle.pleos.liveRemainingChargeMinutes
 import com.chargenap.app.vehicle.pleos.mapChargingState
 import com.chargenap.app.vehicle.pleos.probeCapabilities
 import com.chargenap.app.vehicle.pleos.rangeKmFromMeters
 import com.chargenap.app.vehicle.pleos.readable
-import com.chargenap.app.vehicle.pleos.remainingChargeMinutes
 import com.chargenap.app.vehicle.pleos.valueOrNull
 import com.chargenap.app.vehicle.pleos.wakeFanLevel
 import com.chargenap.app.vehicle.pleos.wakeTemperature
@@ -59,10 +60,15 @@ class PleosUnavailableException(message: String, cause: Throwable? = null) : Exc
 /**
  * Pleos Connect Vehicle SDK 2.3.2로 구현한 [VehicleGateway]. 호출하는 SDK API는 전부 docs/sdk-notes.md 기준이다.
  *
- * SDK가 주지 않는 값과 대체 수단
- * - 충전 상태: SDK에 없다. AAOS `EV_CHARGE_STATE`를 읽을 수 있으면 그 값, 아니면 충전 스위치·잔량·충전 포트로 추론한다.
- * - 남은 충전 시간: SDK에 없다. AAOS `EV_CHARGE_TIME_REMAINING`을 읽을 수 있을 때만 값이 나온다.
- * - 주차 브레이크: SDK에 없다. AAOS `PARKING_BRAKE_ON`을 읽을 수 있을 때만 값이 나온다.
+ * SDK가 주지 않는 값과 대체 수단. AAOS 값은 "살아 있을 때"(연결한 뒤 값이 바뀌는 것을 봤을 때)만 권위 있는 값으로
+ * 쓴다. Pleos Connect Emulator 2.1.0에서는 충전 상태·커넥터 연결·주차 브레이크 AAOS 속성이 Virtual Console과 무관한
+ * 고정 기본값이었다(2026-11-15 실측). 남은 충전 시간도 Virtual Console에 카드가 없어 같을 수 있다.
+ * - 충전 상태: SDK에 없다. 충전 스위치·잔량·연결로 추론한다. AAOS `EV_CHARGE_STATE`는 살아 있거나, 차량이 SDK
+ *   충전 스위치를 주지 않을 때만 앞세운다([com.chargenap.app.vehicle.pleos.trustsAaosChargeState]).
+ * - 연결 여부: AAOS `EV_CHARGE_PORT_CONNECTED`가 살아 있으면 그 값, 아니면 그 값이 true이거나 SDK 충전 포트가 열림.
+ * - 남은 충전 시간: SDK에 없다. AAOS `EV_CHARGE_TIME_REMAINING`이 살아 있고 0보다 클 때만 값이 나온다.
+ * - 주차 브레이크: SDK에 없다. AAOS `PARKING_BRAKE_ON`이 true면 체결, false는 살아 있을 때만 풀림, 그 밖에는 null
+ *   (SafetyGuard가 건너뛰고 기어 P만 본다).
  * - 시트: 절대 위치 지정이 없다. 방향 이동 명령을 보내고 위치를 지켜보다가 멈춘다.
  *
  * 값은 리스너로 받되, 리스너가 조용한 환경에 대비해 [POLL_INTERVAL_MS]마다 다시 조회한다
@@ -149,7 +155,8 @@ class PleosVehicleGateway(
 
     /**
      * AAOS 보강 신호를 쓸 수 있는지 다시 확인한다. `android.car.permission.CAR_ENERGY`(dangerous)가
-     * 실행 중에 부여된 뒤 부르면 충전 상태·남은 충전 시간이 반영된다. 시작 전이면 아무 일도 하지 않는다.
+     * 실행 중에 부여된 뒤 부르면 충전 상태·남은 충전 시간을 읽기 시작한다(값이 바뀌는 것을 본 뒤에 앞세운다).
+     * 시작 전이면 아무 일도 하지 않는다.
      */
     fun refreshAaosAvailability() {
         val current = currentSession() ?: return
@@ -504,33 +511,36 @@ class PleosVehicleGateway(
     private fun publishLocked(target: Session) {
         val signals = target.signals
         val aaos = signals.aaos
+        val capabilities = target.capabilities
         _batteryPercent.value = signals.batteryPercent
         _chargingState.value = mapChargingState(
             ChargingInputs(
                 aaosChargeState = aaos.chargeState,
+                aaosChargeStateLive = aaos.chargeStateLive,
                 chargeSwitchOn = signals.chargeSwitchOn,
+                chargeSwitchSupported = capabilities?.chargeSwitchReadable == true,
                 batteryPercent = signals.batteryPercent,
                 aaosPortConnected = aaos.portConnected,
+                aaosPortConnectedLive = aaos.portConnectedLive,
                 sdkPortOpen = signals.chargePortOpen,
             ),
         )
-        _remainingChargeMinutes.value = remainingChargeMinutes(aaos.chargeTimeRemainingSec)
+        _remainingChargeMinutes.value = liveRemainingMinutes(aaos)
         // 기어는 SDK 값이 우선이고, SDK가 못 읽을 때만 AAOS 값을 쓴다
         _parkState.value = ParkState(
             gearInPark = signals.gearInPark ?: aaos.gearInPark,
-            parkingBrakeOn = aaos.parkingBrakeOn,
+            parkingBrakeOn = aaosParkingBrakeOn(aaos.parkingBrakeOn, aaos.parkingBrakeLive),
         )
         _anyDoorOpen.value = anyDoorOpen(signals.doorOpen.values)
 
-        val capabilities = target.capabilities
         _capabilities.value = if (capabilities == null) {
             VehicleCapabilities.NONE
         } else {
             VehicleCapabilities(
                 batteryPercent = capabilities.batteryReadable,
                 chargingState = capabilities.chargeSwitchReadable || aaos.chargeStateAvailable,
-                // 차량이 남은 시간을 실제로 한 번이라도 준 뒤에만 true. 속성은 있는데 늘 0인 환경에서
-                // "차량이 시간을 준다"고 알리지 않기 위해서다
+                // 살아 있는 양수 남은 시간을 한 번이라도 본 뒤에만 true. 속성은 있는데 늘 0이거나 고정 기본값일 수
+                // 있는 환경(에뮬레이터)에서 "차량이 시간을 준다"고 알리지 않기 위해서다
                 remainingChargeTime = target.remainingTimeSeen,
                 seatRecline = capabilities.seat != null,
                 climate = capabilities.climate.controllable,
@@ -616,7 +626,7 @@ class PleosVehicleGateway(
             synchronized(stateLock) {
                 if (closed) return
                 signals = transform(signals)
-                if ((signals.aaos.chargeTimeRemainingSec ?: 0) > 0) remainingTimeSeen = true
+                if (liveRemainingMinutes(signals.aaos) != null) remainingTimeSeen = true
                 publishLocked(this)
                 // Flow 수집자가 같은 스레드에서 곧바로 실행돼 그 안에서 stop()을 부른 경우, 방금 쓴 값을 다시 비운다
                 if (closed && session == null) resetOutputsLocked()
@@ -754,6 +764,9 @@ class PleosVehicleGateway(
         fun doorKey(index: Int): String = "door$index"
 
         fun describe(t: Throwable): String = t.message ?: t.javaClass.simpleName
+
+        fun liveRemainingMinutes(aaos: AaosSignals): Int? =
+            liveRemainingChargeMinutes(aaos.chargeTimeRemainingSec, aaos.chargeTimeRemainingLive)
 
         /** P면 true, 다른 단이면 false, 모르면(null·GEAR_UNKNOWN) null. */
         fun VehicleGear?.inPark(): Boolean? = when (this) {

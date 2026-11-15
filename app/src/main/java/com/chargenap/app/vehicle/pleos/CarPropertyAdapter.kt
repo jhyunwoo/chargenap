@@ -15,16 +15,24 @@ import kotlinx.coroutines.flow.update
 /**
  * AAOS Car API에서 읽은 보강 신호. 쓸 수 없는 속성(없음·권한 없음·읽기 실패)은 null.
  *
+ * `...Live`는 연결한 뒤 그 속성 값이 바뀌는 것을 봤는지다([LivenessTracker]). 살아 있지 않은 값은 에뮬레이터의
+ * 고정 기본값일 수 있으므로 쓰는 쪽이 규칙에 따라 낮춰 본다([mapChargingState], [aaosParkingBrakeOn],
+ * [liveRemainingChargeMinutes]). 기어는 SDK 기어를 못 읽을 때만 쓰는 대체 값이라 따로 가리지 않는다.
+ *
  * @param chargeStateAvailable `EV_CHARGE_STATE`를 쓸 수 있는지(속성이 있고 권한이 부여됨)
  * @param chargeState `android.car.hardware.property.EvChargeState` 값([AaosEvChargeState])
  */
 internal data class AaosSignals(
     val chargeStateAvailable: Boolean = false,
     val chargeState: Int? = null,
+    val chargeStateLive: Boolean = false,
     val portConnected: Boolean? = null,
+    val portConnectedLive: Boolean = false,
     val chargeTimeRemainingSec: Int? = null,
+    val chargeTimeRemainingLive: Boolean = false,
     val gearInPark: Boolean? = null,
     val parkingBrakeOn: Boolean? = null,
+    val parkingBrakeLive: Boolean = false,
 ) {
     companion object {
         val NONE = AaosSignals()
@@ -51,6 +59,10 @@ internal fun aaosGearInPark(gear: Int): Boolean? = when (gear) {
  * - 속성마다 "권한이 부여됨"이고 "`getCarPropertyConfig(id) != null`"일 때만 쓴다.
  *   `android.car.permission.CAR_ENERGY`는 dangerous라 처음에는 없을 수 있다. 부여된 뒤 [refresh]를 다시 부르면 반영된다.
  * - 콜백은 값이 바뀌었다는 신호로만 쓰고([changes]), 값은 [read]가 다시 조회한다.
+ * - 읽은 값마다 "살아 있는지"([LivenessTracker])를 함께 돌려준다. Pleos Connect Emulator 2.1.0에서는 충전 상태·
+ *   커넥터 연결·주차 브레이크가 Virtual Console과 무관한 고정 기본값이었다(2026-11-15 실측). 남은 충전 시간도
+ *   Virtual Console에 카드가 없어 같을 수 있다.
+ *   기준값은 연결 뒤 처음 읽은 값이고 [disconnect]에서 잊는다. 구독 직후 초기 이벤트로 다시 읽은 같은 값은 변화가 아니다.
  * - 아무 속성도 못 쓰는 환경에서는 [read]가 [AaosSignals.NONE]을 돌려줄 뿐이다. 예외를 던지지 않는다.
  */
 internal class CarPropertyAdapter(private val context: Context) {
@@ -71,6 +83,7 @@ internal class CarPropertyAdapter(private val context: Context) {
     private val registered = mutableSetOf<Property>()
     private val lastValues = mutableMapOf<Property, Any>()
     private val failures = mutableMapOf<Property, Int>()
+    private val liveness = LivenessTracker<Property>()
 
     private val _changes = MutableStateFlow(0L)
 
@@ -103,13 +116,25 @@ internal class CarPropertyAdapter(private val context: Context) {
         val (propertyManager, usable) = synchronized(lock) { manager to available.toSet() }
         if (propertyManager == null || usable.isEmpty()) return AaosSignals.NONE
         return try {
+            // 값을 모두 읽은 뒤 live 여부를 한 번에 가져온다. 값이 바뀐 바로 그 읽기에서 live가 반영되게 하려는 것이다
+            // (반대로 하면 주차 브레이크가 체결→풀림으로 바뀐 순간 한 주기 동안 null이 나간다)
+            val chargeState = readInt(propertyManager, usable, Property.CHARGE_STATE)
+            val portConnected = readBoolean(propertyManager, usable, Property.PORT_CONNECTED)
+            val chargeTimeRemainingSec = readInt(propertyManager, usable, Property.CHARGE_TIME_REMAINING)
+            val gear = readInt(propertyManager, usable, Property.GEAR)
+            val parkingBrakeOn = readBoolean(propertyManager, usable, Property.PARKING_BRAKE)
+            val live = synchronized(lock) { Property.entries.filterTo(mutableSetOf(), liveness::isLive) }
             AaosSignals(
                 chargeStateAvailable = Property.CHARGE_STATE in usable,
-                chargeState = readInt(propertyManager, usable, Property.CHARGE_STATE),
-                portConnected = readBoolean(propertyManager, usable, Property.PORT_CONNECTED),
-                chargeTimeRemainingSec = readInt(propertyManager, usable, Property.CHARGE_TIME_REMAINING),
-                gearInPark = readInt(propertyManager, usable, Property.GEAR)?.let(::aaosGearInPark),
-                parkingBrakeOn = readBoolean(propertyManager, usable, Property.PARKING_BRAKE),
+                chargeState = chargeState,
+                chargeStateLive = Property.CHARGE_STATE in live,
+                portConnected = portConnected,
+                portConnectedLive = Property.PORT_CONNECTED in live,
+                chargeTimeRemainingSec = chargeTimeRemainingSec,
+                chargeTimeRemainingLive = Property.CHARGE_TIME_REMAINING in live,
+                gearInPark = gear?.let(::aaosGearInPark),
+                parkingBrakeOn = parkingBrakeOn,
+                parkingBrakeLive = Property.PARKING_BRAKE in live,
             )
         } catch (t: Throwable) {
             AaosSignals.NONE
@@ -137,6 +162,7 @@ internal class CarPropertyAdapter(private val context: Context) {
             registered.clear()
             lastValues.clear()
             failures.clear()
+            liveness.reset()
         }
     }
 
@@ -193,6 +219,7 @@ internal class CarPropertyAdapter(private val context: Context) {
     /**
      * 읽기가 한 번 실패하면 직전 값을 유지하고, [UNREADABLE_AFTER_FAILURES]번 연달아 실패하면 null로 바꾼다.
      * 일시적인 읽기 오류 한 번에 충전 상태 판정이 AAOS 값에서 SDK 추론으로 넘어갔다 돌아오는 것을 막는다.
+     * 실제로 읽은 값만 [liveness]에 기록한다(실패 때 돌려주는 직전 값은 새 관측이 아니다).
      */
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> readSteady(usable: Set<Property>, property: Property, read: () -> T): T? {
@@ -202,6 +229,7 @@ internal class CarPropertyAdapter(private val context: Context) {
             synchronized(lock) {
                 lastValues[property] = value
                 failures[property] = 0
+                liveness.observe(property, value)
             }
             value
         } catch (t: Throwable) {

@@ -9,63 +9,177 @@ import org.junit.Test
 
 class ChargingStateMapperTest {
 
-    // ---- 1순위: AAOS EV_CHARGE_STATE ----
+    // ---- 1순위: 살아 있는 AAOS EV_CHARGE_STATE ----
 
     @Test
-    fun aaosCharging_isCharging_evenIfSwitchSaysOff() {
+    fun liveAaosCharging_isCharging_evenIfSwitchSaysOff() {
         val state = mapChargingState(
-            ChargingInputs(aaosChargeState = AaosEvChargeState.CHARGING, chargeSwitchOn = false, batteryPercent = 100),
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.CHARGING,
+                aaosChargeStateLive = true,
+                chargeSwitchOn = false,
+                chargeSwitchSupported = true,
+                batteryPercent = 100,
+            ),
         )
         assertEquals(ChargingState.CHARGING, state)
     }
 
     @Test
-    fun aaosFullyCharged_isComplete() {
+    fun liveAaosFullyCharged_isComplete() {
         val state = mapChargingState(
-            ChargingInputs(aaosChargeState = AaosEvChargeState.FULLY_CHARGED, chargeSwitchOn = true, batteryPercent = 80),
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.FULLY_CHARGED,
+                aaosChargeStateLive = true,
+                chargeSwitchOn = true,
+                chargeSwitchSupported = true,
+                batteryPercent = 80,
+            ),
         )
         assertEquals(ChargingState.COMPLETE, state)
     }
 
     @Test
-    fun aaosNotCharging_connectorPlugged_isConnectedIdle() {
+    fun liveAaosNotCharging_connectorPlugged_isConnectedIdle() {
         val state = mapChargingState(
-            ChargingInputs(aaosChargeState = AaosEvChargeState.NOT_CHARGING, aaosPortConnected = true),
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.NOT_CHARGING,
+                aaosChargeStateLive = true,
+                aaosPortConnected = true,
+                aaosPortConnectedLive = true,
+            ),
         )
         assertEquals(ChargingState.CONNECTED_IDLE, state)
     }
 
     @Test
-    fun aaosNotCharging_connectorUnplugged_isNotConnected_evenIfPortOpen() {
+    fun liveAaosNotCharging_liveConnectorUnplugged_isNotConnected_evenIfPortOpen() {
         val state = mapChargingState(
             ChargingInputs(
                 aaosChargeState = AaosEvChargeState.NOT_CHARGING,
+                aaosChargeStateLive = true,
                 aaosPortConnected = false,
+                aaosPortConnectedLive = true,
                 sdkPortOpen = true,
                 chargeSwitchOn = true,
+                chargeSwitchSupported = true,
             ),
         )
         assertEquals(ChargingState.NOT_CONNECTED, state)
     }
 
     @Test
-    fun aaosNotCharging_noConnectorSignal_usesSdkPortOpen() {
-        val open = mapChargingState(ChargingInputs(aaosChargeState = AaosEvChargeState.NOT_CHARGING, sdkPortOpen = true))
-        val closed = mapChargingState(ChargingInputs(aaosChargeState = AaosEvChargeState.NOT_CHARGING, sdkPortOpen = false))
-        val unknown = mapChargingState(ChargingInputs(aaosChargeState = AaosEvChargeState.NOT_CHARGING))
-        assertEquals(ChargingState.CONNECTED_IDLE, open)
-        assertEquals(ChargingState.NOT_CONNECTED, closed)
-        assertEquals(ChargingState.NOT_CONNECTED, unknown)
+    fun liveAaosNotCharging_noConnectorSignal_usesSdkPortOpen() {
+        fun map(portOpen: Boolean?) = mapChargingState(
+            ChargingInputs(aaosChargeState = AaosEvChargeState.NOT_CHARGING, aaosChargeStateLive = true, sdkPortOpen = portOpen),
+        )
+        assertEquals(ChargingState.CONNECTED_IDLE, map(true))
+        assertEquals(ChargingState.NOT_CONNECTED, map(false))
+        assertEquals(ChargingState.NOT_CONNECTED, map(null))
     }
 
     @Test
     fun aaosUnknownOrError_fallsBackToSdkInference() {
         for (aaos in listOf(AaosEvChargeState.UNKNOWN, AaosEvChargeState.ERROR, 99)) {
-            val charging = mapChargingState(ChargingInputs(aaosChargeState = aaos, chargeSwitchOn = true, batteryPercent = 60))
-            val unknown = mapChargingState(ChargingInputs(aaosChargeState = aaos))
-            assertEquals("aaos=$aaos", ChargingState.CHARGING, charging)
-            assertEquals("aaos=$aaos", ChargingState.UNKNOWN, unknown)
+            for (live in listOf(true, false)) {
+                val charging = mapChargingState(
+                    ChargingInputs(
+                        aaosChargeState = aaos,
+                        aaosChargeStateLive = live,
+                        chargeSwitchOn = true,
+                        chargeSwitchSupported = true,
+                        batteryPercent = 60,
+                    ),
+                )
+                val unknown = mapChargingState(ChargingInputs(aaosChargeState = aaos, aaosChargeStateLive = live))
+                assertEquals("aaos=$aaos live=$live", ChargingState.CHARGING, charging)
+                assertEquals("aaos=$aaos live=$live", ChargingState.UNKNOWN, unknown)
+            }
         }
+    }
+
+    // ---- 살아 있지 않은 AAOS EV_CHARGE_STATE (D1: 에뮬레이터 고정 기본값, 2026-11-15 실측) ----
+
+    @Test
+    fun fixedFullyCharged_notLive_switchOn_isCharging() {
+        val state = mapChargingState(
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.FULLY_CHARGED,
+                aaosChargeStateLive = false,
+                chargeSwitchOn = true,
+                chargeSwitchSupported = true,
+                batteryPercent = 60,
+            ),
+        )
+        assertEquals(ChargingState.CHARGING, state)
+    }
+
+    @Test
+    fun fixedFullyCharged_notLive_switchUnsupported_isComplete() {
+        // 차량이 SDK 충전 스위치를 주지 않으면 AAOS 값이 유일한 근거다(대체 경로 유지)
+        val state = mapChargingState(
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.FULLY_CHARGED,
+                aaosChargeStateLive = false,
+                chargeSwitchOn = null,
+                chargeSwitchSupported = false,
+                batteryPercent = 60,
+            ),
+        )
+        assertEquals(ChargingState.COMPLETE, state)
+    }
+
+    @Test
+    fun fixedFullyCharged_notLive_switchSupportedButMomentarilyUnreadable_isUnknown() {
+        // 시작 직후 스위치 조회가 아직 안 왔거나 일시적으로 실패한 순간. 고정 FULLY_CHARGED를 COMPLETE로 내보내면
+        // 세션 엔진이 수면 중인 사용자를 "충전 완료"로 깨운다
+        val state = mapChargingState(
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.FULLY_CHARGED,
+                aaosChargeStateLive = false,
+                chargeSwitchOn = null,
+                chargeSwitchSupported = true,
+                batteryPercent = 60,
+            ),
+        )
+        assertEquals(ChargingState.UNKNOWN, state)
+    }
+
+    @Test
+    fun emulatorScenario_fixedFullyCharged_switchOn_socRising_staysCharging() {
+        val tracker = LivenessTracker<String>()
+        for (percent in 53..60) {
+            val live = tracker.observe("state", AaosEvChargeState.FULLY_CHARGED)
+            val state = mapChargingState(
+                ChargingInputs(
+                    aaosChargeState = AaosEvChargeState.FULLY_CHARGED,
+                    aaosChargeStateLive = live,
+                    chargeSwitchOn = true,
+                    chargeSwitchSupported = true,
+                    batteryPercent = percent,
+                ),
+            )
+            assertEquals("soc=$percent", ChargingState.CHARGING, state)
+        }
+    }
+
+    @Test
+    fun aaosBecomesLive_notChargingToCharging_thenAaosWins() {
+        val tracker = LivenessTracker<String>()
+        fun map(aaos: Int) = mapChargingState(
+            ChargingInputs(
+                aaosChargeState = aaos,
+                aaosChargeStateLive = tracker.observe("state", aaos),
+                chargeSwitchOn = false,
+                chargeSwitchSupported = true,
+                sdkPortOpen = false,
+            ),
+        )
+        // 처음 값(기준값)만 봤을 때는 SDK 추론: 스위치 Off, 포트 닫힘
+        assertEquals(ChargingState.NOT_CONNECTED, map(AaosEvChargeState.NOT_CHARGING))
+        // 값이 바뀌어 살아 있다고 확인되면 SDK 스위치가 Off라도 AAOS 값을 따른다
+        assertEquals(ChargingState.CHARGING, map(AaosEvChargeState.CHARGING))
+        assertEquals(ChargingState.COMPLETE, map(AaosEvChargeState.FULLY_CHARGED))
     }
 
     // ---- 2순위: SDK 추론 ----
@@ -98,9 +212,30 @@ class ChargingStateMapperTest {
     }
 
     @Test
-    fun switchOff_connectorUnplugged_isNotConnected_evenIfPortOpen() {
-        val state = mapChargingState(ChargingInputs(chargeSwitchOn = false, aaosPortConnected = false, sdkPortOpen = true))
+    fun switchOff_liveConnectorUnplugged_isNotConnected_evenIfPortOpen() {
+        val state = mapChargingState(
+            ChargingInputs(chargeSwitchOn = false, aaosPortConnected = false, aaosPortConnectedLive = true, sdkPortOpen = true),
+        )
         assertEquals(ChargingState.NOT_CONNECTED, state)
+    }
+
+    @Test
+    fun switchOff_fixedConnectorFalse_notLive_portOpen_isConnectedIdle() {
+        // D2: 에뮬레이터의 EV_CHARGE_PORT_CONNECTED는 고정 false였다(2026-11-15 실측)
+        val tracker = LivenessTracker<String>()
+        repeat(3) { tracker.observe("port", false) }
+        val state = mapChargingState(
+            ChargingInputs(
+                aaosChargeState = AaosEvChargeState.FULLY_CHARGED,
+                aaosChargeStateLive = false,
+                chargeSwitchOn = false,
+                chargeSwitchSupported = true,
+                aaosPortConnected = false,
+                aaosPortConnectedLive = tracker.isLive("port"),
+                sdkPortOpen = true,
+            ),
+        )
+        assertEquals(ChargingState.CONNECTED_IDLE, state)
     }
 
     @Test
@@ -114,12 +249,28 @@ class ChargingStateMapperTest {
         assertEquals(ChargingState.UNKNOWN, state)
     }
 
+    // ---- 커넥터 연결 여부 ----
+
     @Test
-    fun isPluggedIn_prefersConnectorSignalOverPortOpen() {
-        assertTrue(isPluggedIn(aaosPortConnected = true, sdkPortOpen = false))
-        assertFalse(isPluggedIn(aaosPortConnected = false, sdkPortOpen = true))
-        assertTrue(isPluggedIn(aaosPortConnected = null, sdkPortOpen = true))
-        assertFalse(isPluggedIn(aaosPortConnected = null, sdkPortOpen = null))
+    fun isPluggedIn_liveConnectorSignal_winsOverPortOpen() {
+        assertTrue(isPluggedIn(aaosPortConnected = true, aaosPortConnectedLive = true, sdkPortOpen = false))
+        assertFalse(isPluggedIn(aaosPortConnected = false, aaosPortConnectedLive = true, sdkPortOpen = true))
+    }
+
+    @Test
+    fun isPluggedIn_connectorSignalNotLive_eitherSignalCounts() {
+        assertTrue(isPluggedIn(aaosPortConnected = false, aaosPortConnectedLive = false, sdkPortOpen = true))
+        assertTrue(isPluggedIn(aaosPortConnected = true, aaosPortConnectedLive = false, sdkPortOpen = false))
+        assertFalse(isPluggedIn(aaosPortConnected = false, aaosPortConnectedLive = false, sdkPortOpen = false))
+        assertFalse(isPluggedIn(aaosPortConnected = false, aaosPortConnectedLive = false, sdkPortOpen = null))
+    }
+
+    @Test
+    fun isPluggedIn_noConnectorSignal_usesPortOpen() {
+        assertTrue(isPluggedIn(aaosPortConnected = null, aaosPortConnectedLive = false, sdkPortOpen = true))
+        assertFalse(isPluggedIn(aaosPortConnected = null, aaosPortConnectedLive = false, sdkPortOpen = null))
+        // 살아 있던 속성을 지금 못 읽으면(null) SDK 포트 열림으로 대체한다
+        assertTrue(isPluggedIn(aaosPortConnected = null, aaosPortConnectedLive = true, sdkPortOpen = true))
     }
 
     // ---- 남은 충전 시간 ----
